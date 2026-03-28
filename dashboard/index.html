@@ -726,7 +726,7 @@
         <div class="section">
             <h2 class="section-title">🚀 Outreach & Self-Optimization Pipeline</h2>
             <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 25px;">
-                <strong>5 new workflows</strong> extending the lead engine into autonomous outreach, reply detection, follow-up sequencing, newsletter cross-pollination, and weekly self-optimization.
+                <strong>5 workflows</strong> extending the lead engine with draft-first outreach, thread-based reply detection, step-tracked follow-up sequencing, newsletter-to-prospect bridging, and weekly self-optimization.
             </p>
             <div class="table-wrapper">
                 <table>
@@ -742,13 +742,13 @@
                         <tr>
                             <td><strong>WF5</strong> Outreach Sender</td>
                             <td>Every 12h</td>
-                            <td>Creates Gmail drafts for hot leads — review before send</td>
+                            <td>Creates Gmail drafts + logs draft_id (no auto-send). Review in Gmail, WF6 tracks replies once sent.</td>
                             <td><span class="badge active">READY</span></td>
                         </tr>
                         <tr>
                             <td><strong>WF6</strong> Reply Detection</td>
                             <td>Every 4h</td>
-                            <td>Scans Gmail for replies to outreach, updates pipeline</td>
+                            <td>Thread-based reply detection via Gmail thread IDs. Only tracks sent emails (not drafts).</td>
                             <td><span class="badge active">READY</span></td>
                         </tr>
                         <tr>
@@ -760,13 +760,13 @@
                         <tr>
                             <td><strong>WF8</strong> Newsletter Bridge</td>
                             <td>Daily</td>
-                            <td>MailerLite engaged subscribers → prospect pipeline</td>
+                            <td>Scores MailerLite engagement, matches business email domains to prospects, flags nurture candidates.</td>
                             <td><span class="badge active">READY</span></td>
                         </tr>
                         <tr>
                             <td><strong>WF9</strong> Follow-up Sequencer</td>
                             <td>Daily</td>
-                            <td>Day 0→3→7→10→14 multi-touch follow-up orchestration</td>
+                            <td>Day 0→3→7→10→14 follow-ups. Notifies Slack + advances sequence_step (fires once per step).</td>
                             <td><span class="badge active">READY</span></td>
                         </tr>
                     </tbody>
@@ -783,13 +783,13 @@
                 <div class="card">
                     <div class="card-title">📬 Draft-First Outreach</div>
                     <div class="card-description">
-                        WF5 creates Gmail drafts (never auto-sends). Daniel reviews each draft before sending. Safe for initial rollout, upgradable to auto-send once calibrated.
+                        WF5 creates Gmail drafts and stores draft_id + thread_id. Status stays 'draft_created' until you manually send. WF6 only starts reply tracking once gmail_thread_id exists (i.e. after send).
                     </div>
                 </div>
                 <div class="card">
-                    <div class="card-title">🔄 Cross-Channel Orchestration</div>
+                    <div class="card-title">🔄 Step-Tracked Follow-ups</div>
                     <div class="card-description">
-                        Day 0: Email → Day 3: Follow-up 1 → Day 7: LinkedIn → Day 10: Follow-up 2 → Day 14: Break-up email. Automated timing prevents over-contact.
+                        WF9 checks last_notified_step so each follow-up fires exactly once: Day 3 email, Day 7 LinkedIn, Day 10 email, Day 14 break-up. Advances sequence_step after each Slack notification.
                     </div>
                 </div>
             </div>
@@ -1162,10 +1162,11 @@
         }
 
         async function loadData() {
-            // Fetch all data
-            const [prospects, enrichedLeads, outreach] = await Promise.all([
-                fetchSupabaseData('prospects?select=id,company_name,rule_filter_passed,created_at&order=created_at.desc'),
-                fetchSupabaseData('enriched_leads?select=id,prospect_id,confidence_score,routing,company_summary,email_subject,enriched_at&order=confidence_score.desc&limit=20'),
+            // Fetch data with correct column names and split KPI queries from table query
+            const [prospects, kpiLeads, tableLeads, outreach] = await Promise.all([
+                fetchSupabaseData('prospects?select=id,company_name,rule_filter_passed,ingested_at&order=ingested_at.desc'),
+                fetchSupabaseData('enriched_leads?select=id,confidence_score,routing'),
+                fetchSupabaseData('enriched_leads?select=id,prospect_id,confidence_score,routing,company_summary,angle_description,enriched_at,prospects!enriched_leads_prospect_id_fkey(company_name)&order=confidence_score.desc&limit=20'),
                 fetchSupabaseData('outreach_log?select=id,status,created_at')
             ]);
 
@@ -1181,33 +1182,39 @@
                 document.getElementById('passedFilter').textContent = '0';
             }
 
-            // Update routing stats
-            if (enrichedLeads && enrichedLeads.length > 0) {
-                const hot = enrichedLeads.filter(l => l.routing === 'hot_lead').length;
-                const warm = enrichedLeads.filter(l => l.routing === 'warm_lead').length;
-                const skip = enrichedLeads.filter(l => l.routing === 'skip').length;
-                const avgConfidence = (enrichedLeads.reduce((sum, l) => sum + (l.confidence_score || 0), 0) / enrichedLeads.length).toFixed(1);
+            // Update routing stats from FULL dataset (not limited table query)
+            if (kpiLeads && kpiLeads.length > 0) {
+                const hot = kpiLeads.filter(l => l.routing === 'hot_lead').length;
+                const warm = kpiLeads.filter(l => l.routing === 'warm_lead').length;
+                const skip = kpiLeads.filter(l => l.routing === 'skip').length;
+                const avgConfidence = (kpiLeads.reduce((sum, l) => sum + (l.confidence_score || 0), 0) / kpiLeads.length).toFixed(1);
 
                 document.getElementById('hotLeads').textContent = hot;
                 document.getElementById('warmLeads').textContent = warm;
                 document.getElementById('skipLeads').textContent = skip;
                 document.getElementById('avgConfidence').textContent = avgConfidence + '%';
-
-                // Populate leads table
-                const tableBody = document.getElementById('leadsTable');
-                tableBody.innerHTML = enrichedLeads.map(lead => `
-                    <tr>
-                        <td>${lead.company_summary ? lead.company_summary.substring(0, 30) : 'Unknown'}</td>
-                        <td>${(lead.confidence_score || 0).toFixed(0)}%</td>
-                        <td><span class="badge ${lead.routing.replace('_', ' ')}">${lead.routing.replace('_', ' ').toUpperCase()}</span></td>
-                        <td style="font-size: 0.85rem; color: var(--text-secondary);">${lead.email_subject ? lead.email_subject.substring(0, 40) : '--'}</td>
-                    </tr>
-                `).join('');
             } else {
                 document.getElementById('hotLeads').textContent = '0';
                 document.getElementById('warmLeads').textContent = '0';
                 document.getElementById('skipLeads').textContent = '0';
                 document.getElementById('avgConfidence').textContent = '--';
+            }
+
+            // Populate leads table from joined query (company_name from prospects table)
+            if (tableLeads && tableLeads.length > 0) {
+                const tableBody = document.getElementById('leadsTable');
+                tableBody.innerHTML = tableLeads.map(lead => {
+                    const companyName = (lead.prospects && lead.prospects.company_name) || 'Unknown';
+                    const summary = lead.company_summary ? lead.company_summary.substring(0, 50) : (lead.angle_description ? lead.angle_description.substring(0, 50) : '--');
+                    return `
+                    <tr>
+                        <td>${companyName}</td>
+                        <td>${(lead.confidence_score || 0).toFixed(0)}%</td>
+                        <td><span class="badge ${lead.routing.replace('_', ' ')}">${lead.routing.replace('_', ' ').toUpperCase()}</span></td>
+                        <td style="font-size: 0.85rem; color: var(--text-secondary);">${summary}</td>
+                    </tr>`;
+                }).join('');
+            } else {
                 document.getElementById('leadsTable').innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">No leads found</td></tr>';
             }
 
