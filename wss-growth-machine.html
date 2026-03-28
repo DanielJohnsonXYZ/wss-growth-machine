@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WSS Growth Machine — Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #7B2FF7;
+            --primary-light: #9D5FFF;
+            --primary-dark: #5A1FB8;
+            --bg-dark: #0F0F1F;
+            --bg-secondary: #1A1A2E;
+            --bg-tertiary: #25254A;
+            --text-primary: #FFFFFF;
+            --text-secondary: #B4B4C8;
+            --border: #2A2A45;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --error: #EF4444;
+            --accent-blue: #3B82F6;
+            --accent-emerald: #10B981;
+            --accent-cyan: #06B6D4;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a0f2e 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-title {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .header-title-main {
+            color: var(--text-primary);
+        }
+
+        .header-title-growth {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 6s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { filter: hue-rotate(0deg); }
+            50% { filter: hue-rotate(10deg); }
+        }
+
+        .header-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .header-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            font-size: 0.9rem;
+        }
+
+        .refresh-timestamp {
+            color: var(--text-secondary);
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(123, 47, 247, 0.3);
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Loader */
+        .loader {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-light) 100%);
+            border-radius: 2px;
+        }
+
+        /* User Journey */
+        .journey-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .journey-node {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            position: relative;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .journey-node::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent-blue), var(--accent-emerald));
+            opacity: 0.5;
+        }
+
+        .journey-node:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(123, 47, 247, 0.15);
+        }
+
+        .journey-layer {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .journey-title {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-dot.green {
+            background: var(--success);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+
+        .status-dot.yellow {
+            background: var(--warning);
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+        }
+
+        .status-dot.red {
+            background: var(--error);
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .journey-components {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .journey-status {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Data Grid */
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .data-card {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .data-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+        }
+
+        .data-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .data-value {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .data-value.loading {
+            -webkit-text-fill-color: unset;
+            background: none;
+            font-size: 1.5rem;
+        }
+
+        .data-subtext {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        /* Tables */
+        .table-wrapper {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: rgba(123, 47, 247, 0.1);
+            padding: 14px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: rgba(123, 47, 247, 0.05);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge.hot {
+            background: rgba(239, 68, 68, 0.2);
+            color: #FCA5A5;
+        }
+
+        .badge.warm {
+            background: rgba(245, 158, 11, 0.2);
+            color: #FDE047;
+        }
+
+        .badge.skip {
+            background: rgba(107, 114, 128, 0.2);
+            color: #D1D5DB;
+        }
+
+        .badge.active {
+            background: rgba(16, 185, 129, 0.2);
+            color: #86EFAC;
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(123, 47, 247, 0.15);
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .card-description {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Content Repurposing */
+        .repurpose-flow {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .flow-item {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        /* Pipeline */
+        .pipeline {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .pipeline-stage {
+            flex: 1;
+            min-width: 120px;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 16px 12px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .pipeline-stage.empty {
+            color: var(--text-secondary);
+        }
+
+        .pipeline-stage.active {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, rgba(123, 47, 247, 0.1) 0%, rgba(157, 95, 255, 0.05) 100%);
+        }
+
+        /* Links Grid */
+        .links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .link-card {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 16px;
+            text-decoration: none;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .link-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(123, 47, 247, 0.15);
+        }
+
+        .link-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+
+        .link-url {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.8;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-title {
+                font-size: 1.8rem;
+                flex-direction: column;
+            }
+
+            .journey-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .header-controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+
+        /* Print */
+        @media print {
+            body {
+                background: white;
+                color: #000;
+            }
+
+            .refresh-btn {
+                display: none;
+            }
+
+            .journey-node, .data-card, .card, .link-card, .table-wrapper {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1 class="header-title">
+                <span class="header-title-main">WSS</span>
+                <span class="header-title-growth">Growth Machine</span>
+            </h1>
+            <p class="header-subtitle">The stranger-to-client engine for We Scale Startups</p>
+            <div class="header-controls">
+                <span class="refresh-timestamp">Last refreshed: <span id="lastRefresh">--:--</span></span>
+                <button class="refresh-btn" onclick="refreshData()" id="refreshBtn">
+                    <span id="refreshText">Refresh Data</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- User Journey -->
+        <div class="section">
+            <h2 class="section-title">🚀 The 7-Layer Growth Machine</h2>
+            <div class="journey-container">
+                <div class="journey-node">
+                    <div class="journey-layer">Layer 0</div>
+                    <div class="journey-title">
+                        Back-end Ops
+                        <span class="status-dot green"></span>
+                    </div>
+                    <div class="journey-components">
+                        • Lead Engine v3<br>
+                        • 9 n8n workflows<br>
+                        • 157+ contacts CRM
+                    </div>
+                    <div class="journey-status">Message Queue: LIVE</div>
+                </div>
+
+                <div class="journey-node">
+                    <div class="journey-layer">Layer 1</div>
+                    <div class="journey-title">
+                        Digital Foundation
+                        <span class="status-dot yellow"></span>
+                    </div>
+                    <div class="journey-components">
+                        • Website copy<br>
+                        • LinkedIn profile<br>
+                        • 3 case studies
+                    </div>
+                    <div class="journey-status">Needs dev work</div>
+                </div>
+
+                <div class="journey-node">
+                    <div class="journey-layer">Layer 2</div>
+                    <div class="journey-title">
+                        Attraction
+                        <span class="status-dot yellow"></span>
+                    </div>
+                    <div class="journey-components">
+                        • LinkedIn (6 posts)<br>
+                        • Podcast (planned)<br>
+                        • Lead magnet live
+                    </div>
+                    <div class="journey-status">Building distribution</div>
+                </div>
+
+                <div class="journey-node">
+                    <div class="journey-layer">Layer 3</div>
+                    <div class="journey-title">
+                        Capture & Nurture
+                        <span class="status-dot green"></span>
+                    </div>
+                    <div class="journey-components">
+                        • MailerLite ACTIVE<br>
+                        • 559 subscribers<br>
+                        • 10 emails × 60 days
+                    </div>
+                    <div class="journey-status">19-step automation</div>
+                </div>
+
+                <div class="journey-node">
+                    <div class="journey-layer">Layer 4</div>
+                    <div class="journey-title">
+                        Conversion
+                        <span class="status-dot green"></span>
+                    </div>
+                    <div class="journey-components">
+                        • Discovery calls live<br>
+                        • Calendly → questions<br>
+                        • Pricing finalized
+                    </div>
+                    <div class="journey-status">£5K-15K/mo retainers</div>
+                </div>
+
+                <div class="journey-node">
+                    <div class="journey-layer">Layer 5</div>
+                    <div class="journey-title">
+                        Delivery
+                        <span class="status-dot green"></span>
+                    </div>
+                    <div class="journey-components">
+                        • Onboarding templates<br>
+                        • Offboarding ready<br>
+                        • QBR framework
+                    </div>
+                    <div class="journey-status">Process locked in</div>
+                </div>
+
+                <div class="journey-node">
+                    <div class="journey-layer">Layer 6</div>
+                    <div class="journey-title">
+                        Retention & Referral
+                        <span class="status-dot yellow"></span>
+                    </div>
+                    <div class="journey-components">
+                        • Referral system<br>
+                        • Alumni network<br>
+                        • Testimonial engine
+                    </div>
+                    <div class="journey-status">Designed, not live</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lead Engine -->
+        <div class="section">
+            <h2 class="section-title">⚡ Lead Engine (Live Data)</h2>
+            <div class="data-grid">
+                <div class="data-card">
+                    <div class="data-label">Total Prospects</div>
+                    <div class="data-value loading" id="totalProspects"><span class="loader"></span></div>
+                </div>
+                <div class="data-card">
+                    <div class="data-label">Passed Filter</div>
+                    <div class="data-value loading" id="passedFilter"><span class="loader"></span></div>
+                </div>
+                <div class="data-card">
+                    <div class="data-label">Hot Leads</div>
+                    <div class="data-value loading" id="hotLeads"><span class="loader"></span></div>
+                </div>
+                <div class="data-card">
+                    <div class="data-label">Warm Leads</div>
+                    <div class="data-value loading" id="warmLeads"><span class="loader"></span></div>
+                </div>
+                <div class="data-card">
+                    <div class="data-label">Skip</div>
+                    <div class="data-value loading" id="skipLeads"><span class="loader"></span></div>
+                </div>
+                <div class="data-card">
+                    <div class="data-label">Avg Confidence</div>
+                    <div class="data-value loading" id="avgConfidence"><span class="loader"></span></div>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Company</th>
+                            <th>Confidence</th>
+                            <th>Routing</th>
+                            <th>Summary</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leadsTable">
+                        <tr><td colspan="4" style="text-align: center; padding: 30px;"><span class="loader"></span> Loading leads...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Closed Loop Funnel -->
+        <div class="section">
+            <h2 class="section-title">🔄 Closed Loop Funnel (Live)</h2>
+            <div class="data-grid" style="grid-template-columns: repeat(7, 1fr);">
+                <div class="data-card" style="border-left: 3px solid var(--accent-blue);">
+                    <div class="data-label">Prospects</div>
+                    <div class="data-value loading" id="funnelProspects"><span class="loader"></span></div>
+                </div>
+                <div class="data-card" style="border-left: 3px solid var(--primary);">
+                    <div class="data-label">Enriched</div>
+                    <div class="data-value loading" id="funnelEnriched"><span class="loader"></span></div>
+                </div>
+                <div class="data-card" style="border-left: 3px solid var(--warning);">
+                    <div class="data-label">Drafted</div>
+                    <div class="data-value loading" id="funnelDrafted"><span class="loader"></span></div>
+                </div>
+                <div class="data-card" style="border-left: 3px solid #F59E0B;">
+                    <div class="data-label">Pending Approval</div>
+                    <div class="data-value loading" id="funnelPending"><span class="loader"></span></div>
+                </div>
+                <div class="data-card" style="border-left: 3px solid var(--success);">
+                    <div class="data-label">Sent</div>
+                    <div class="data-value loading" id="funnelSent"><span class="loader"></span></div>
+                </div>
+                <div class="data-card" style="border-left: 3px solid var(--accent-cyan);">
+                    <div class="data-label">Replied</div>
+                    <div class="data-value loading" id="funnelReplied"><span class="loader"></span></div>
+                </div>
+                <div class="data-card" style="border-left: 3px solid #10B981;">
+                    <div class="data-label">Positive</div>
+                    <div class="data-value loading" id="funnelPositive"><span class="loader"></span></div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px;">
+                <div style="height: 6px; flex: 1; background: linear-gradient(90deg, var(--accent-blue), var(--primary), var(--warning), var(--success), var(--accent-cyan), #10B981); border-radius: 3px; opacity: 0.6;"></div>
+            </div>
+        </div>
+
+        <!-- Approval Queue -->
+        <div class="section">
+            <h2 class="section-title">✅ Approval Queue</h2>
+            <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 20px;">
+                Review and approve outreach drafts before they're sent. Approve to send via Gmail, reject to discard.
+            </p>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Company</th>
+                            <th>Contact</th>
+                            <th>Subject</th>
+                            <th>Confidence</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="approvalTable">
+                        <tr><td colspan="6" style="text-align: center; padding: 30px;"><span class="loader"></span> Loading approval queue...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Email Preview Modal -->
+            <div id="emailModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
+                <div style="background:var(--bg-secondary); border:1px solid var(--border); border-radius:12px; padding:30px; max-width:700px; width:90%; max-height:80vh; overflow-y:auto;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h3 style="font-family:'Space Grotesk',sans-serif;" id="modalTitle">Email Preview</h3>
+                        <button onclick="closeModal()" style="background:none; border:none; color:var(--text-secondary); font-size:1.5rem; cursor:pointer;">&times;</button>
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <span style="color:var(--text-secondary);">To:</span> <span id="modalTo" style="color:var(--text-primary);"></span>
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <span style="color:var(--text-secondary);">Subject:</span> <span id="modalSubject" style="color:var(--text-primary); font-weight:600;"></span>
+                    </div>
+                    <div style="background:var(--bg-tertiary); border-radius:8px; padding:20px; white-space:pre-wrap; line-height:1.7; color:var(--text-primary); font-size:0.95rem;" id="modalBody"></div>
+                    <div style="display:flex; gap:12px; margin-top:24px; justify-content:flex-end;">
+                        <button onclick="handleApproval(currentApprovalId, 'reject')" style="padding:10px 24px; background:var(--error); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">❌ Reject</button>
+                        <button onclick="handleApproval(currentApprovalId, 'approve')" style="padding:10px 24px; background:var(--success); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">✅ Approve & Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Outreach & Self-Optimization Pipeline -->
+        <div class="section">
+            <h2 class="section-title">🚀 Outreach & Self-Optimization Pipeline</h2>
+            <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 25px;">
+                <strong>5 workflows</strong> extending the lead engine with draft-first outreach, thread-based reply detection, step-tracked follow-up sequencing, newsletter-to-prospect bridging, and weekly self-optimization.
+            </p>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Workflow</th>
+                            <th>Schedule</th>
+                            <th>Function</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>WF5</strong> Outreach Sender</td>
+                            <td>Every 12h</td>
+                            <td>Creates Gmail drafts + logs draft_id (no auto-send). Review in Gmail, WF6 tracks replies once sent.</td>
+                            <td><span class="badge active">READY</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>WF6</strong> Reply Detection</td>
+                            <td>Every 4h</td>
+                            <td>Thread-based reply detection via Gmail thread IDs. Only tracks sent emails (not drafts).</td>
+                            <td><span class="badge active">READY</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>WF7</strong> Weekly Self-Optimization</td>
+                            <td>Mon 9am</td>
+                            <td>Analyses metrics, generates recommendations, tracks source quality</td>
+                            <td><span class="badge active">READY</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>WF8</strong> Newsletter Bridge</td>
+                            <td>Daily</td>
+                            <td>Scores MailerLite engagement, matches business email domains to prospects, flags nurture candidates.</td>
+                            <td><span class="badge active">READY</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>WF9</strong> Follow-up Sequencer</td>
+                            <td>Daily</td>
+                            <td>Day 0→3→7→10→14 follow-ups. Notifies Slack + advances sequence_step (fires once per step).</td>
+                            <td><span class="badge active">READY</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="cards-grid" style="margin-top: 25px;">
+                <div class="card">
+                    <div class="card-title">🧠 Self-Improving Database</div>
+                    <div class="card-description">
+                        5 new Supabase tables track source quality, A/B test variants, prompt performance, and weekly system metrics. The machine learns which RSS feeds and outreach angles produce results.
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">📬 Draft-First Outreach</div>
+                    <div class="card-description">
+                        WF5 creates Gmail drafts and stores draft_id + thread_id. Status stays 'draft_created' until you manually send. WF6 only starts reply tracking once gmail_thread_id exists (i.e. after send).
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">🔄 Step-Tracked Follow-ups</div>
+                    <div class="card-description">
+                        WF9 checks last_notified_step so each follow-up fires exactly once: Day 3 email, Day 7 LinkedIn, Day 10 email, Day 14 break-up. Advances sequence_step after each Slack notification.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Newsletter & Email Marketing -->
+        <div class="section">
+            <h2 class="section-title">📧 Newsletter & Email Marketing</h2>
+            <div class="data-grid">
+                <div class="data-card">
+                    <div class="data-label">Total Subscribers</div>
+                    <div class="data-value">559</div>
+                    <div class="data-subtext">Target: 1,000 by month 6</div>
+                </div>
+                <div class="data-card">
+                    <div class="data-label">Campaigns Sent</div>
+                    <div class="data-value">7</div>
+                    <div class="data-subtext">Latest: 40.93% open rate</div>
+                </div>
+                <div class="data-card">
+                    <div class="data-label">Best Open Rate</div>
+                    <div class="data-value">46.48%</div>
+                    <div class="data-subtext">March 2023</div>
+                </div>
+                <div class="data-card">
+                    <div class="data-label">Nurture Automation</div>
+                    <div class="data-value" style="font-size: 1.3rem;">ACTIVE</div>
+                    <div class="data-subtext"><span class="badge active">10 emails, 60 days</span></div>
+                </div>
+            </div>
+
+            <div class="cards-grid" style="margin-top: 25px;">
+                <div class="card">
+                    <div class="card-title">📰 Here's Some Growth</div>
+                    <div class="card-description">
+                        Fortnightly newsletter covering founder mistakes, GTM frameworks, and AI-native growth ops. Issue #1 drafted. Curated for our ICP of AI/B2B SaaS founders.
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">🎯 Nurture Sequence</div>
+                    <div class="card-description">
+                        Trust → Authority → Conversion playbook. 19 steps across 60 days. Every email removes objections or builds credibility. Integrated with Calendly for timely calls.
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">📅 Editorial Calendar</div>
+                    <div class="card-description">
+                        Issue #2: "Your AI Growth Blueprint" | #3: "The 5-Layer B2B Growth Stack" | #4: "SaaS Founder Mistakes (Real Data)" | #5: "How We Built Our Lead Engine" | #6: "Growth Ops Checklist"
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Engine -->
+        <div class="section">
+            <h2 class="section-title">📺 Content Repurposing Engine</h2>
+            <div class="repurpose-flow">
+                <div class="flow-item">📻 Podcast Episode</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">💼 LinkedIn Post</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">📧 Newsletter</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">📝 Blog Post</div>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 25px;">
+                <strong>One input, four outputs. ~6 hours/week.</strong> Every episode becomes LinkedIn content, newsletter feature, and blog post for SEO.
+            </p>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>Task</th>
+                            <th>Duration</th>
+                            <th>Output</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Monday</td>
+                            <td>Podcast live + LinkedIn post</td>
+                            <td>30 min</td>
+                            <td>Episode + Post</td>
+                        </tr>
+                        <tr>
+                            <td>Tuesday</td>
+                            <td>Newsletter writing</td>
+                            <td>75 min (fortnightly)</td>
+                            <td>Full issue draft</td>
+                        </tr>
+                        <tr>
+                            <td>Wednesday</td>
+                            <td>Video clips + LinkedIn</td>
+                            <td>45 min</td>
+                            <td>3x carousel posts</td>
+                        </tr>
+                        <tr>
+                            <td>Thursday</td>
+                            <td>Framework/case study post</td>
+                            <td>30 min</td>
+                            <td>Long-form post</td>
+                        </tr>
+                        <tr>
+                            <td>Friday</td>
+                            <td>Blog post + schedule</td>
+                            <td>45 min</td>
+                            <td>SEO blog + queue</td>
+                        </tr>
+                        <tr>
+                            <td>Daily</td>
+                            <td>ICP commenting</td>
+                            <td>15-20 min</td>
+                            <td>5-10 comments</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="cards-grid" style="margin-top: 25px;">
+                <div class="card">
+                    <div class="card-title">🎓 GTM Frameworks</div>
+                    <div class="card-description">Repeatable playbooks for customer acquisition. Multi-touch campaigns, positioning, and channel strategy.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">🤖 AI-Native Growth Ops</div>
+                    <div class="card-description">Using LLMs and automation to build repeatable growth systems. Practical playbooks we use at WSS.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">⚠️ Founder Mistakes</div>
+                    <div class="card-description">Patterns from 200+ startups. What founders consistently get wrong and how to fix it.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">🔨 Build in Public</div>
+                    <div class="card-description">What's actually happening at We Scale Startups. Transparent look at our growth playbook in action.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Growth Course -->
+        <div class="section">
+            <h2 class="section-title">🎓 Growth Course</h2>
+            <div class="cards-grid">
+                <div class="card" style="grid-column: span 2;">
+                    <div class="card-title">12-Week Startup Growth Accelerator</div>
+                    <div class="card-description" style="margin-bottom: 15px;">
+                        201 slides, workbook, and instructor guide. All content built and ready.
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 15px;">
+                        <strong>Release strategy:</strong> Weeks 1-5 free (trust builders) → Weeks 6-12 gated (premium)
+                    </p>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 15px;">
+                        <strong>Status:</strong> Content ✅ | Landing page ❌ | Distribution ❌
+                    </p>
+                    <a href="https://docs.google.com/presentation/d/1oONhRGUFYXJoqhrI7C1VwaCaKZUzP_7qQh4Vbd-Zv5Y" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">
+                        → View on Google Slides
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Podcast -->
+        <div class="section">
+            <h2 class="section-title">🎙️ Podcast</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-title">Inside AI Growth</div>
+                    <div class="card-description">
+                        30-45 min founder interviews. Dream 200 strategy — guests are potential clients and referral sources.
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Distribution</div>
+                    <div class="card-description">
+                        YouTube, Spotify, Apple Podcasts. Guest template written. Zero episodes recorded yet.
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Status</div>
+                    <div class="card-description">
+                        Concept locked, framework ready, first guest outreach starting soon. 30-min production time per episode.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Clients -->
+        <div class="section">
+            <h2 class="section-title">👥 Active Clients</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th>Service</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Diadia Health</td>
+                            <td>Fractional CMO</td>
+                            <td><span class="badge active">Active</span></td>
+                        </tr>
+                        <tr>
+                            <td>FRONTLINE / Boehringer</td>
+                            <td>Performance Marketing</td>
+                            <td><span class="badge active">Active</span></td>
+                        </tr>
+                        <tr>
+                            <td>BASIC International</td>
+                            <td>Board Trustee</td>
+                            <td><span class="badge active">Active</span></td>
+                        </tr>
+                        <tr>
+                            <td>Purrness</td>
+                            <td>Growth</td>
+                            <td><span class="badge active">New</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pipeline -->
+        <div class="section">
+            <h2 class="section-title">🔄 Pipeline Snapshot</h2>
+            <div class="pipeline">
+                <div class="pipeline-stage">Prospect</div>
+                <div class="pipeline-stage">Enriched</div>
+                <div class="pipeline-stage">Draft Created</div>
+                <div class="pipeline-stage">Approved & Sent</div>
+                <div class="pipeline-stage">Reply Received</div>
+                <div class="pipeline-stage">Meeting Booked</div>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 20px; text-align: center;">
+                Fully autonomous closed loop — human approval required before sending
+            </p>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="section">
+            <h2 class="section-title">📊 Key Metrics (Targets)</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-title">Newsletter Subscribers</div>
+                    <div class="card-description" style="margin-bottom: 12px;">559 / 1,000 (Month 6)</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 55.9%;"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Discovery Calls/Month</div>
+                    <div class="card-description" style="margin-bottom: 12px;">0 / 4-6 Target</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Proposal Close Rate</div>
+                    <div class="card-description" style="margin-bottom: 12px;">-- / >40% Target</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Sprint→Retainer Convert</div>
+                    <div class="card-description" style="margin-bottom: 12px;">-- / >60% Target</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Pipeline Coverage</div>
+                    <div class="card-description" style="margin-bottom: 12px;">-- / 3x Target</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Newsletter Open Rate</div>
+                    <div class="card-description" style="margin-bottom: 12px;">41% avg / >40% Target ✅</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 102.5%; background: var(--success);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="section">
+            <h2 class="section-title">🔗 Quick Links</h2>
+            <div class="links-grid">
+                <a href="https://danieljohnsonxyz.app.n8n.cloud" target="_blank" class="link-card">
+                    <div class="link-title">🤖 n8n Automation</div>
+                    <div class="link-url">danieljohnsonxyz.app.n8n.cloud</div>
+                </a>
+                <a href="https://stkmxtcfwvdiltulfzjv.supabase.co" target="_blank" class="link-card">
+                    <div class="link-title">🗄️ Supabase Database</div>
+                    <div class="link-url">stkmxtcfwvdiltulfzjv.supabase.co</div>
+                </a>
+                <a href="https://dashboard.mailerlite.com" target="_blank" class="link-card">
+                    <div class="link-title">📧 MailerLite Email</div>
+                    <div class="link-url">dashboard.mailerlite.com</div>
+                </a>
+                <a href="https://calendly.com/wescalestartups" target="_blank" class="link-card">
+                    <div class="link-title">📅 Calendly Bookings</div>
+                    <div class="link-url">calendly.com/wescalestartups</div>
+                </a>
+                <a href="https://www.wescalestartups.com" target="_blank" class="link-card">
+                    <div class="link-title">🌐 Website</div>
+                    <div class="link-url">wescalestartups.com</div>
+                </a>
+                <a href="https://www.linkedin.com/in/danieljohnsonprofile/" target="_blank" class="link-card">
+                    <div class="link-title">💼 LinkedIn</div>
+                    <div class="link-url">linkedin.com/in/danieljohnsonprofile</div>
+                </a>
+                <a href="https://mentorcruise.com" target="_blank" class="link-card">
+                    <div class="link-title">👨‍🏫 MentorCruise</div>
+                    <div class="link-url">mentorcruise.com</div>
+                </a>
+                <a href="https://wss-lead-engine-dashboard.netlify.app" target="_blank" class="link-card">
+                    <div class="link-title">⚡ Lead Engine Dashboard</div>
+                    <div class="link-url">wss-lead-engine-dashboard.netlify.app</div>
+                </a>
+                <a href="https://www.notion.so/72a8e537af114bf09db351749dfccddd" target="_blank" class="link-card">
+                    <div class="link-title">📋 Notion CRM</div>
+                    <div class="link-url">notion.so/72a8e537af114bf09db351749dfccddd</div>
+                </a>
+                <a href="https://docs.google.com/presentation/d/1oONhRGUFYXJoqhrI7C1VwaCaKZUzP_7qQh4Vbd-Zv5Y" target="_blank" class="link-card">
+                    <div class="link-title">🎓 Growth Course</div>
+                    <div class="link-url">Google Slides Presentation</div>
+                </a>
+                <a href="https://wescalestartups.slack.com" target="_blank" class="link-card">
+                    <div class="link-title">💬 Slack #ai-updates</div>
+                    <div class="link-url">wescalestartups.slack.com</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Built by Daniel Johnson | We Scale Startups | Phase 2: Distribution</p>
+            <p style="margin-top: 15px;">
+                <strong>The 95-5 Rule:</strong> Only 5% of your ICP is actively buying. The other 95% need nurturing through thought leadership until they are.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://stkmxtcfwvdiltulfzjv.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0a214dGNmd3ZkaWx0dWxmemp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDYzNzksImV4cCI6MjA4OTQyMjM3OX0.qycUuiHgv6LSX_ROuQiSzLfL6w7D4tv2ZzLrjHAaGDA';
+
+        const headers = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json'
+        };
+
+        async function fetchSupabaseData(endpoint) {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, { headers });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error(`Error fetching ${endpoint}:`, error);
+                return null;
+            }
+        }
+
+        const N8N_WEBHOOK_URL = 'https://danieljohnsonxyz.app.n8n.cloud/webhook/approval-action';
+        let currentApprovalId = null;
+        let approvalCache = [];
+
+        async function loadData() {
+            const [prospects, kpiLeads, tableLeads, outreach, approvals] = await Promise.all([
+                fetchSupabaseData('prospects?select=id,company_name,rule_filter_passed,ingested_at&order=ingested_at.desc'),
+                fetchSupabaseData('enriched_leads?select=id,confidence_score,routing'),
+                fetchSupabaseData('enriched_leads?select=id,prospect_id,confidence_score,routing,company_summary,angle_description,enriched_at,prospects!enriched_leads_prospect_id_fkey(company_name)&order=confidence_score.desc&limit=20'),
+                fetchSupabaseData('outreach_log?select=id,status,reply_sentiment,created_at'),
+                fetchSupabaseData('approval_queue?select=*&order=created_at.desc&limit=20')
+            ]);
+
+            // Lead engine stats
+            if (prospects && prospects.length > 0) {
+                document.getElementById('totalProspects').textContent = prospects.length;
+                document.getElementById('passedFilter').textContent = prospects.filter(p => p.rule_filter_passed === true).length;
+            } else {
+                document.getElementById('totalProspects').textContent = '0';
+                document.getElementById('passedFilter').textContent = '0';
+            }
+
+            // Routing stats
+            if (kpiLeads && kpiLeads.length > 0) {
+                const hot = kpiLeads.filter(l => l.routing === 'hot_lead').length;
+                const warm = kpiLeads.filter(l => l.routing === 'warm_lead').length;
+                const skip = kpiLeads.filter(l => l.routing === 'skip').length;
+                const avgConfidence = (kpiLeads.reduce((sum, l) => sum + (l.confidence_score || 0), 0) / kpiLeads.length).toFixed(1);
+                document.getElementById('hotLeads').textContent = hot;
+                document.getElementById('warmLeads').textContent = warm;
+                document.getElementById('skipLeads').textContent = skip;
+                document.getElementById('avgConfidence').textContent = avgConfidence + '%';
+            } else {
+                document.getElementById('hotLeads').textContent = '0';
+                document.getElementById('warmLeads').textContent = '0';
+                document.getElementById('skipLeads').textContent = '0';
+                document.getElementById('avgConfidence').textContent = '--';
+            }
+
+            // === FUNNEL METRICS ===
+            const totalProspects = prospects ? prospects.length : 0;
+            const totalEnriched = kpiLeads ? kpiLeads.length : 0;
+            const drafted = outreach ? outreach.filter(o => o.status === 'draft_created').length : 0;
+            const pending = approvals ? approvals.filter(a => a.status === 'pending').length : 0;
+            const sent = outreach ? outreach.filter(o => o.status === 'sent').length : 0;
+            const replied = outreach ? outreach.filter(o => o.status === 'replied').length : 0;
+            const positive = outreach ? outreach.filter(o => o.reply_sentiment === 'positive').length : 0;
+
+            document.getElementById('funnelProspects').textContent = totalProspects;
+            document.getElementById('funnelEnriched').textContent = totalEnriched;
+            document.getElementById('funnelDrafted').textContent = drafted;
+            document.getElementById('funnelPending').textContent = pending;
+            document.getElementById('funnelSent').textContent = sent;
+            document.getElementById('funnelReplied').textContent = replied;
+            document.getElementById('funnelPositive').textContent = positive;
+
+            // === APPROVAL QUEUE ===
+            approvalCache = approvals || [];
+            renderApprovalQueue(approvalCache);
+
+            // Leads table
+            if (tableLeads && tableLeads.length > 0) {
+                const tableBody = document.getElementById('leadsTable');
+                tableBody.innerHTML = tableLeads.map(lead => {
+                    const companyName = (lead.prospects && lead.prospects.company_name) || 'Unknown';
+                    const summary = lead.company_summary ? lead.company_summary.substring(0, 50) : (lead.angle_description ? lead.angle_description.substring(0, 50) : '--');
+                    return `
+                    <tr>
+                        <td>${companyName}</td>
+                        <td>${(lead.confidence_score || 0).toFixed(0)}%</td>
+                        <td><span class="badge ${lead.routing.replace('_', ' ')}">${lead.routing.replace('_', ' ').toUpperCase()}</span></td>
+                        <td style="font-size: 0.85rem; color: var(--text-secondary);">${summary}</td>
+                    </tr>`;
+                }).join('');
+            } else {
+                document.getElementById('leadsTable').innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">No leads found</td></tr>';
+            }
+
+            // Timestamp
+            const now = new Date();
+            document.getElementById('lastRefresh').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('refreshBtn').disabled = false;
+            document.getElementById('refreshText').textContent = 'Refresh Data';
+        }
+
+        function renderApprovalQueue(approvals) {
+            const tbody = document.getElementById('approvalTable');
+            if (!approvals || approvals.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 30px;">No items in approval queue</td></tr>';
+                return;
+            }
+            tbody.innerHTML = approvals.map(a => {
+                const statusColor = a.status === 'pending' ? 'var(--warning)' : a.status === 'sent' ? 'var(--success)' : a.status === 'rejected' ? 'var(--error)' : 'var(--text-secondary)';
+                const statusLabel = a.status.toUpperCase();
+                const actions = a.status === 'pending' ? `
+                    <button onclick="previewEmail('${a.id}')" style="padding:6px 14px; background:var(--accent-blue); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.8rem; margin-right:6px;">Preview</button>
+                    <button onclick="handleApproval('${a.id}', 'approve')" style="padding:6px 14px; background:var(--success); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.8rem; margin-right:6px;">✅</button>
+                    <button onclick="handleApproval('${a.id}', 'reject')" style="padding:6px 14px; background:var(--error); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.8rem;">❌</button>
+                ` : `<span style="color:var(--text-secondary); font-size:0.8rem;">${a.reviewed_at ? new Date(a.reviewed_at).toLocaleDateString() : '--'}</span>`;
+                return `
+                <tr>
+                    <td style="font-weight:600;">${a.company_name || '--'}</td>
+                    <td>${a.contact_name || '--'}<br><span style="font-size:0.8rem; color:var(--text-secondary);">${a.contact_email || ''}</span></td>
+                    <td style="font-size:0.9rem;">${(a.email_subject || '--').substring(0, 40)}</td>
+                    <td>${a.confidence_score || '--'}%</td>
+                    <td><span style="color:${statusColor}; font-weight:600; font-size:0.85rem;">${statusLabel}</span></td>
+                    <td>${actions}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function previewEmail(approvalId) {
+            const item = approvalCache.find(a => a.id === approvalId);
+            if (!item) return;
+            currentApprovalId = approvalId;
+            document.getElementById('modalTitle').textContent = item.company_name || 'Email Preview';
+            document.getElementById('modalTo').textContent = `${item.contact_name} <${item.contact_email}>`;
+            document.getElementById('modalSubject').textContent = item.email_subject;
+            document.getElementById('modalBody').textContent = item.email_body;
+            document.getElementById('emailModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('emailModal').style.display = 'none';
+            currentApprovalId = null;
+        }
+
+        async function handleApproval(approvalId, action) {
+            if (!confirm(`${action === 'approve' ? 'Approve and SEND this email?' : 'Reject this outreach draft?'}`)) return;
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(N8N_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ approval_id: approvalId, action: action })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    closeModal();
+                    await loadData(); // Refresh to show updated status
+                } else {
+                    alert('Action failed: ' + (result.error || 'Unknown error'));
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Close modal on backdrop click
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'emailModal') closeModal();
+        });
+
+        async function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            document.getElementById('refreshText').textContent = 'Refreshing...';
+            await loadData();
+        }
+
+        document.addEventListener('DOMContentLoaded', loadData);
+        setInterval(loadData, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
