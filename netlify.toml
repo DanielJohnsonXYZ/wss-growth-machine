@@ -1,0 +1,18 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Redirect /.netlify/functions/api to /api for cleaner URLs
+[[redirects]]
+  from = "/api"
+  to = "/.netlify/functions/api"
+  status = 200
+
+# Serve the canonical dashboard at root
+[[redirects]]
+  from = "/"
+  to = "/wss-growth-machine.html"
+  status = 200

@@ -1224,145 +1224,202 @@
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://stkmxtcfwvdiltulfzjv.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0a214dGNmd3ZkaWx0dWxmemp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDYzNzksImV4cCI6MjA4OTQyMjM3OX0.qycUuiHgv6LSX_ROuQiSzLfL6w7D4tv2ZzLrjHAaGDA';
+        // All data is fetched via the server-side API proxy (/api).
+        // No Supabase keys or webhook URLs are exposed to the browser.
 
-        const headers = {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Content-Type': 'application/json'
-        };
+        let currentApprovalId = null;
+        let approvalCache = [];
 
-        async function fetchSupabaseData(endpoint) {
+        async function fetchData(endpoint) {
             try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, { headers });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const response = await fetch('/api?endpoint=' + encodeURIComponent(endpoint));
+                if (!response.ok) throw new Error('HTTP ' + response.status);
                 return await response.json();
             } catch (error) {
-                console.error(`Error fetching ${endpoint}:`, error);
+                console.error('Error fetching ' + endpoint + ':', error);
                 return null;
             }
         }
 
-        const N8N_WEBHOOK_URL = 'https://danieljohnsonxyz.app.n8n.cloud/webhook/approval-action';
-        let currentApprovalId = null;
-        let approvalCache = [];
+        // ── Safe DOM helpers (no innerHTML) ──
+
+        function setText(id, text) {
+            document.getElementById(id).textContent = text;
+        }
+
+        function clearChildren(el) {
+            while (el.firstChild) el.removeChild(el.firstChild);
+        }
+
+        function createEl(tag, attrs, textContent) {
+            const el = document.createElement(tag);
+            if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+                if (k === 'style' && typeof v === 'object') {
+                    Object.assign(el.style, v);
+                } else {
+                    el.setAttribute(k, v);
+                }
+            });
+            if (textContent != null) el.textContent = textContent;
+            return el;
+        }
+
+        function buildLeadRow(lead) {
+            const tr = createEl('tr');
+            const companyName = (lead.prospects && lead.prospects.company_name) || 'Unknown';
+            const summary = lead.company_summary
+                ? lead.company_summary.substring(0, 50)
+                : (lead.angle_description ? lead.angle_description.substring(0, 50) : '--');
+
+            const tdCompany = createEl('td', null, companyName);
+            const tdConf = createEl('td', null, (lead.confidence_score || 0).toFixed(0) + '%');
+
+            const tdRouting = createEl('td');
+            const badge = createEl('span', { class: 'badge ' + (lead.routing || '').replace('_', ' ') },
+                (lead.routing || '').replace('_', ' ').toUpperCase());
+            tdRouting.appendChild(badge);
+
+            const tdSummary = createEl('td', { style: 'font-size: 0.85rem; color: var(--text-secondary);' }, summary);
+
+            tr.append(tdCompany, tdConf, tdRouting, tdSummary);
+            return tr;
+        }
+
+        function buildApprovalRow(a) {
+            const tr = createEl('tr');
+
+            const tdCompany = createEl('td', { style: 'font-weight:600;' }, a.company_name || '--');
+
+            const tdContact = createEl('td');
+            tdContact.appendChild(document.createTextNode(a.contact_name || '--'));
+            tdContact.appendChild(createEl('br'));
+            const emailSpan = createEl('span', { style: 'font-size:0.8rem; color:var(--text-secondary);' }, a.contact_email || '');
+            tdContact.appendChild(emailSpan);
+
+            const tdSubject = createEl('td', { style: 'font-size:0.9rem;' }, (a.email_subject || '--').substring(0, 40));
+
+            const tdConf = createEl('td', null, (a.confidence_score || '--') + '%');
+
+            const statusColor = a.status === 'pending' ? 'var(--warning)'
+                : a.status === 'sent' ? 'var(--success)'
+                : a.status === 'rejected' ? 'var(--error)'
+                : 'var(--text-secondary)';
+            const tdStatus = createEl('td');
+            tdStatus.appendChild(createEl('span', { style: 'color:' + statusColor + '; font-weight:600; font-size:0.85rem;' }, a.status.toUpperCase()));
+
+            const tdActions = createEl('td');
+            if (a.status === 'pending') {
+                const previewBtn = createEl('button', { style: 'padding:6px 14px; background:var(--accent-blue); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.8rem; margin-right:6px;' }, 'Preview');
+                previewBtn.addEventListener('click', () => previewEmail(a.id));
+
+                const approveBtn = createEl('button', { style: 'padding:6px 14px; background:var(--success); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.8rem; margin-right:6px;' }, 'Approve');
+                approveBtn.addEventListener('click', (e) => handleApproval(a.id, 'approve', e));
+
+                const rejectBtn = createEl('button', { style: 'padding:6px 14px; background:var(--error); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.8rem;' }, 'Reject');
+                rejectBtn.addEventListener('click', (e) => handleApproval(a.id, 'reject', e));
+
+                tdActions.append(previewBtn, approveBtn, rejectBtn);
+            } else {
+                const reviewedText = a.reviewed_at ? new Date(a.reviewed_at).toLocaleDateString() : '--';
+                tdActions.appendChild(createEl('span', { style: 'color:var(--text-secondary); font-size:0.8rem;' }, reviewedText));
+            }
+
+            tr.append(tdCompany, tdContact, tdSubject, tdConf, tdStatus, tdActions);
+            return tr;
+        }
+
+        // ── Data loading ──
 
         async function loadData() {
             const [prospects, kpiLeads, tableLeads, outreach, approvals] = await Promise.all([
-                fetchSupabaseData('prospects?select=id,company_name,rule_filter_passed,ingested_at&order=ingested_at.desc'),
-                fetchSupabaseData('enriched_leads?select=id,confidence_score,routing'),
-                fetchSupabaseData('enriched_leads?select=id,prospect_id,confidence_score,routing,company_summary,angle_description,enriched_at,prospects!enriched_leads_prospect_id_fkey(company_name)&order=confidence_score.desc&limit=20'),
-                fetchSupabaseData('outreach_log?select=id,status,reply_sentiment,created_at'),
-                fetchSupabaseData('approval_queue?select=*&order=created_at.desc&limit=20')
+                fetchData('prospects?select=id,company_name,rule_filter_passed,ingested_at&order=ingested_at.desc'),
+                fetchData('enriched_leads?select=id,confidence_score,routing'),
+                fetchData('enriched_leads?select=id,prospect_id,confidence_score,routing,company_summary,angle_description,enriched_at,prospects!enriched_leads_prospect_id_fkey(company_name)&order=confidence_score.desc&limit=20'),
+                fetchData('outreach_log?select=id,status,reply_sentiment,created_at'),
+                fetchData('approval_queue?select=*&order=created_at.desc&limit=20')
             ]);
 
             // Lead engine stats
             if (prospects && prospects.length > 0) {
-                document.getElementById('totalProspects').textContent = prospects.length;
-                document.getElementById('passedFilter').textContent = prospects.filter(p => p.rule_filter_passed === true).length;
+                setText('totalProspects', prospects.length);
+                setText('passedFilter', prospects.filter(p => p.rule_filter_passed === true).length);
             } else {
-                document.getElementById('totalProspects').textContent = '0';
-                document.getElementById('passedFilter').textContent = '0';
+                setText('totalProspects', '0');
+                setText('passedFilter', '0');
             }
 
-            // Routing stats
             if (kpiLeads && kpiLeads.length > 0) {
                 const hot = kpiLeads.filter(l => l.routing === 'hot_lead').length;
                 const warm = kpiLeads.filter(l => l.routing === 'warm_lead').length;
                 const skip = kpiLeads.filter(l => l.routing === 'skip').length;
-                const avgConfidence = (kpiLeads.reduce((sum, l) => sum + (l.confidence_score || 0), 0) / kpiLeads.length).toFixed(1);
-                document.getElementById('hotLeads').textContent = hot;
-                document.getElementById('warmLeads').textContent = warm;
-                document.getElementById('skipLeads').textContent = skip;
-                document.getElementById('avgConfidence').textContent = avgConfidence + '%';
+                const avg = (kpiLeads.reduce((s, l) => s + (l.confidence_score || 0), 0) / kpiLeads.length).toFixed(1);
+                setText('hotLeads', hot);
+                setText('warmLeads', warm);
+                setText('skipLeads', skip);
+                setText('avgConfidence', avg + '%');
             } else {
-                document.getElementById('hotLeads').textContent = '0';
-                document.getElementById('warmLeads').textContent = '0';
-                document.getElementById('skipLeads').textContent = '0';
-                document.getElementById('avgConfidence').textContent = '--';
+                setText('hotLeads', '0');
+                setText('warmLeads', '0');
+                setText('skipLeads', '0');
+                setText('avgConfidence', '--');
             }
 
-            // === FUNNEL METRICS ===
-            const totalProspects = prospects ? prospects.length : 0;
-            const totalEnriched = kpiLeads ? kpiLeads.length : 0;
+            // Funnel metrics
+            const totalP = prospects ? prospects.length : 0;
+            const totalE = kpiLeads ? kpiLeads.length : 0;
             const drafted = outreach ? outreach.filter(o => o.status === 'draft_created').length : 0;
             const pending = approvals ? approvals.filter(a => a.status === 'pending').length : 0;
             const sent = outreach ? outreach.filter(o => o.status === 'sent').length : 0;
             const replied = outreach ? outreach.filter(o => o.status === 'replied').length : 0;
             const positive = outreach ? outreach.filter(o => o.reply_sentiment === 'positive').length : 0;
 
-            document.getElementById('funnelProspects').textContent = totalProspects;
-            document.getElementById('funnelEnriched').textContent = totalEnriched;
-            document.getElementById('funnelDrafted').textContent = drafted;
-            document.getElementById('funnelPending').textContent = pending;
-            document.getElementById('funnelSent').textContent = sent;
-            document.getElementById('funnelReplied').textContent = replied;
-            document.getElementById('funnelPositive').textContent = positive;
+            setText('funnelProspects', totalP);
+            setText('funnelEnriched', totalE);
+            setText('funnelDrafted', drafted);
+            setText('funnelPending', pending);
+            setText('funnelSent', sent);
+            setText('funnelReplied', replied);
+            setText('funnelPositive', positive);
 
-            // === APPROVAL QUEUE ===
+            // Approval queue — safe DOM
             approvalCache = approvals || [];
-            renderApprovalQueue(approvalCache);
-
-            // Leads table
-            if (tableLeads && tableLeads.length > 0) {
-                const tableBody = document.getElementById('leadsTable');
-                tableBody.innerHTML = tableLeads.map(lead => {
-                    const companyName = (lead.prospects && lead.prospects.company_name) || 'Unknown';
-                    const summary = lead.company_summary ? lead.company_summary.substring(0, 50) : (lead.angle_description ? lead.angle_description.substring(0, 50) : '--');
-                    return `
-                    <tr>
-                        <td>${companyName}</td>
-                        <td>${(lead.confidence_score || 0).toFixed(0)}%</td>
-                        <td><span class="badge ${lead.routing.replace('_', ' ')}">${lead.routing.replace('_', ' ').toUpperCase()}</span></td>
-                        <td style="font-size: 0.85rem; color: var(--text-secondary);">${summary}</td>
-                    </tr>`;
-                }).join('');
+            const approvalTbody = document.getElementById('approvalTable');
+            clearChildren(approvalTbody);
+            if (approvalCache.length === 0) {
+                const tr = createEl('tr');
+                tr.appendChild(createEl('td', { colspan: '6', style: 'text-align: center; color: var(--text-secondary); padding: 30px;' }, 'No items in approval queue'));
+                approvalTbody.appendChild(tr);
             } else {
-                document.getElementById('leadsTable').innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">No leads found</td></tr>';
+                approvalCache.forEach(a => approvalTbody.appendChild(buildApprovalRow(a)));
+            }
+
+            // Leads table — safe DOM
+            const leadsTbody = document.getElementById('leadsTable');
+            clearChildren(leadsTbody);
+            if (tableLeads && tableLeads.length > 0) {
+                tableLeads.forEach(lead => leadsTbody.appendChild(buildLeadRow(lead)));
+            } else {
+                const tr = createEl('tr');
+                tr.appendChild(createEl('td', { colspan: '4', style: 'text-align: center; color: var(--text-secondary);' }, 'No leads found'));
+                leadsTbody.appendChild(tr);
             }
 
             // Timestamp
-            const now = new Date();
-            document.getElementById('lastRefresh').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            setText('lastRefresh', new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
             document.getElementById('refreshBtn').disabled = false;
-            document.getElementById('refreshText').textContent = 'Refresh Data';
+            setText('refreshText', 'Refresh Data');
         }
 
-        function renderApprovalQueue(approvals) {
-            const tbody = document.getElementById('approvalTable');
-            if (!approvals || approvals.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 30px;">No items in approval queue</td></tr>';
-                return;
-            }
-            tbody.innerHTML = approvals.map(a => {
-                const statusColor = a.status === 'pending' ? 'var(--warning)' : a.status === 'sent' ? 'var(--success)' : a.status === 'rejected' ? 'var(--error)' : 'var(--text-secondary)';
-                const statusLabel = a.status.toUpperCase();
-                const actions = a.status === 'pending' ? `
-                    <button onclick="previewEmail('${a.id}')" style="padding:6px 14px; background:var(--accent-blue); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.8rem; margin-right:6px;">Preview</button>
-                    <button onclick="handleApproval('${a.id}', 'approve')" style="padding:6px 14px; background:var(--success); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.8rem; margin-right:6px;">✅</button>
-                    <button onclick="handleApproval('${a.id}', 'reject')" style="padding:6px 14px; background:var(--error); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.8rem;">❌</button>
-                ` : `<span style="color:var(--text-secondary); font-size:0.8rem;">${a.reviewed_at ? new Date(a.reviewed_at).toLocaleDateString() : '--'}</span>`;
-                return `
-                <tr>
-                    <td style="font-weight:600;">${a.company_name || '--'}</td>
-                    <td>${a.contact_name || '--'}<br><span style="font-size:0.8rem; color:var(--text-secondary);">${a.contact_email || ''}</span></td>
-                    <td style="font-size:0.9rem;">${(a.email_subject || '--').substring(0, 40)}</td>
-                    <td>${a.confidence_score || '--'}%</td>
-                    <td><span style="color:${statusColor}; font-weight:600; font-size:0.85rem;">${statusLabel}</span></td>
-                    <td>${actions}</td>
-                </tr>`;
-            }).join('');
-        }
+        // ── Approval actions (routed through server-side proxy) ──
 
         function previewEmail(approvalId) {
             const item = approvalCache.find(a => a.id === approvalId);
             if (!item) return;
             currentApprovalId = approvalId;
-            document.getElementById('modalTitle').textContent = item.company_name || 'Email Preview';
-            document.getElementById('modalTo').textContent = `${item.contact_name} <${item.contact_email}>`;
-            document.getElementById('modalSubject').textContent = item.email_subject;
-            document.getElementById('modalBody').textContent = item.email_body;
+            setText('modalTitle', item.company_name || 'Email Preview');
+            setText('modalTo', (item.contact_name || '') + ' <' + (item.contact_email || '') + '>');
+            setText('modalSubject', item.email_subject || '');
+            setText('modalBody', item.email_body || '');
             document.getElementById('emailModal').style.display = 'flex';
         }
 
@@ -1371,16 +1428,19 @@
             currentApprovalId = null;
         }
 
-        async function handleApproval(approvalId, action) {
-            if (!confirm(`${action === 'approve' ? 'Approve and SEND this email?' : 'Reject this outreach draft?'}`)) return;
+        async function handleApproval(approvalId, action, evt) {
+            if (!confirm(action === 'approve' ? 'Approve and SEND this email?' : 'Reject this outreach draft?')) return;
 
-            const btn = event.target;
-            const originalText = btn.textContent;
-            btn.textContent = '...';
-            btn.disabled = true;
+            const btn = evt ? evt.target : null;
+            let originalText;
+            if (btn) {
+                originalText = btn.textContent;
+                btn.textContent = '...';
+                btn.disabled = true;
+            }
 
             try {
-                const response = await fetch(N8N_WEBHOOK_URL, {
+                const response = await fetch('/api', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ approval_id: approvalId, action: action })
@@ -1388,16 +1448,14 @@
                 const result = await response.json();
                 if (result.success) {
                     closeModal();
-                    await loadData(); // Refresh to show updated status
+                    await loadData();
                 } else {
                     alert('Action failed: ' + (result.error || 'Unknown error'));
-                    btn.textContent = originalText;
-                    btn.disabled = false;
+                    if (btn) { btn.textContent = originalText; btn.disabled = false; }
                 }
             } catch (error) {
                 alert('Network error: ' + error.message);
-                btn.textContent = originalText;
-                btn.disabled = false;
+                if (btn) { btn.textContent = originalText; btn.disabled = false; }
             }
         }
 
@@ -1407,9 +1465,8 @@
         });
 
         async function refreshData() {
-            const btn = document.getElementById('refreshBtn');
-            btn.disabled = true;
-            document.getElementById('refreshText').textContent = 'Refreshing...';
+            document.getElementById('refreshBtn').disabled = true;
+            setText('refreshText', 'Refreshing...');
             await loadData();
         }
 
