@@ -28,7 +28,7 @@ WF8 Newsletter Bridge (MailerLite > lead pipeline)
 - **Enrichment**: Apollo.io (people search + email match)
 - **Notifications**: Slack
 - **Newsletter**: MailerLite
-- **Dashboard**: Static HTML on Netlify, with Netlify Functions as API proxy
+- **Dashboard**: Static HTML on Vercel, with Vercel Serverless Functions as API proxy
 
 ## Quick start
 
@@ -48,24 +48,20 @@ This creates all 10 tables and enables Row Level Security on each.
 
 In Supabase > Authentication > Policies, confirm that every table has RLS enabled
 and **no** public/anon SELECT policies exist. The dashboard reads data through a
-Netlify Function using the **service-role key**, which bypasses RLS server-side.
+Vercel Serverless Function using the **service-role key**, which bypasses RLS server-side.
 
-### 4. Deploy to Netlify
+### 4. Deploy to Vercel
 
-```bash
-# Install Netlify CLI if needed
-npm i -g netlify-cli
+Connect the GitHub repo to your Vercel project, then set env vars in
+Vercel > Project Settings > Environment Variables:
 
-# Link to your site and set env vars
-netlify link
-netlify env:set SUPABASE_URL "https://YOUR_PROJECT.supabase.co"
-netlify env:set SUPABASE_SERVICE_KEY "eyJ..."
-netlify env:set N8N_WEBHOOK_URL "https://YOUR_INSTANCE.app.n8n.cloud/webhook/approval-action"
-netlify env:set APPROVAL_SECRET "$(openssl rand -hex 32)"
-netlify env:set ALLOWED_ORIGIN "https://your-site.netlify.app"
+- `SUPABASE_URL` — e.g. `https://YOUR_PROJECT.supabase.co`
+- `SUPABASE_SERVICE_KEY` — the service-role key (not the anon key)
+- `N8N_WEBHOOK_URL` — e.g. `https://YOUR_INSTANCE.app.n8n.cloud/webhook/approval-action`
+- `APPROVAL_SECRET` — generate with `openssl rand -hex 32`
+- `ALLOWED_ORIGIN` — e.g. `https://your-project.vercel.app`
 
-netlify deploy --prod
-```
+Vercel will auto-deploy on every push to `main`.
 
 ### 5. Secure the n8n webhook
 
@@ -79,8 +75,8 @@ include it.
 .
 ├── wss-growth-machine.html      # Canonical dashboard (serves at /)
 ├── dashboard/index.html          # Redirect to canonical dashboard
-├── netlify/functions/api.js      # Server-side API proxy (Supabase + webhook)
-├── netlify.toml                  # Build & redirect config
+├── api/index.js                  # Vercel Serverless Function (Supabase + webhook proxy)
+├── vercel.json                   # Rewrite config (/ → dashboard)
 ├── supabase/schema.sql           # Full database schema with RLS
 ├── docs/WSS-Machine-Status.md    # Operational status log
 ├── .env.example                  # Environment variable template
@@ -90,10 +86,10 @@ include it.
 ## Security model
 
 - **No credentials in client-side code.** The browser calls `/api` which is a
-  Netlify Function. Supabase keys and n8n webhook URLs live only in server-side
-  environment variables.
+  Vercel Serverless Function. Supabase keys and n8n webhook URLs live only in
+  server-side environment variables.
 - **RLS enabled on all tables.** The anon key cannot read any data. Only the
-  service-role key (used by the Netlify Function) can query.
+  service-role key (used by the Vercel Function) can query.
 - **Approval actions are authenticated.** The `/api` POST proxy adds an
   `X-Approval-Secret` header that n8n must validate before executing.
 - **No innerHTML.** All dynamic content is rendered via `textContent` and
