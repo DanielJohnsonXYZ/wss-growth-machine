@@ -107,9 +107,23 @@ exports.handler = async (event) => {
         },
         body: JSON.stringify({ approval_id, action }),
       });
-      const data = await res.json();
+
+      // Tolerate non-JSON responses (204 No Content, plain text, empty body)
+      const text = await res.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
+      }
+
+      // Treat any 2xx as success if n8n didn't include an explicit success field
+      if (res.ok && data.success === undefined) {
+        data.success = true;
+      }
+
       return {
-        statusCode: res.status,
+        statusCode: res.ok ? 200 : res.status,
         headers: { ...cors, 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       };

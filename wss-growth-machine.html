@@ -1230,6 +1230,8 @@
         let currentApprovalId = null;
         let approvalCache = [];
 
+        const API_ERROR = Symbol('API_ERROR');
+
         async function fetchData(endpoint) {
             try {
                 const response = await fetch('/api?endpoint=' + encodeURIComponent(endpoint));
@@ -1237,8 +1239,12 @@
                 return await response.json();
             } catch (error) {
                 console.error('Error fetching ' + endpoint + ':', error);
-                return null;
+                return API_ERROR;
             }
+        }
+
+        function isError(result) {
+            return result === API_ERROR;
         }
 
         // ── Safe DOM helpers (no innerHTML) ──
@@ -1339,8 +1345,14 @@
                 fetchData('approval_queue?select=*&order=created_at.desc&limit=20')
             ]);
 
+            const ERR = 'API unavailable';
+            const anyError = isError(prospects) || isError(kpiLeads) || isError(outreach) || isError(approvals);
+
             // Lead engine stats
-            if (prospects && prospects.length > 0) {
+            if (isError(prospects)) {
+                setText('totalProspects', ERR);
+                setText('passedFilter', ERR);
+            } else if (prospects && prospects.length > 0) {
                 setText('totalProspects', prospects.length);
                 setText('passedFilter', prospects.filter(p => p.rule_filter_passed === true).length);
             } else {
@@ -1348,7 +1360,12 @@
                 setText('passedFilter', '0');
             }
 
-            if (kpiLeads && kpiLeads.length > 0) {
+            if (isError(kpiLeads)) {
+                setText('hotLeads', ERR);
+                setText('warmLeads', ERR);
+                setText('skipLeads', ERR);
+                setText('avgConfidence', ERR);
+            } else if (kpiLeads && kpiLeads.length > 0) {
                 const hot = kpiLeads.filter(l => l.routing === 'hot_lead').length;
                 const warm = kpiLeads.filter(l => l.routing === 'warm_lead').length;
                 const skip = kpiLeads.filter(l => l.routing === 'skip').length;
@@ -1365,13 +1382,13 @@
             }
 
             // Funnel metrics
-            const totalP = prospects ? prospects.length : 0;
-            const totalE = kpiLeads ? kpiLeads.length : 0;
-            const drafted = outreach ? outreach.filter(o => o.status === 'draft_created').length : 0;
-            const pending = approvals ? approvals.filter(a => a.status === 'pending').length : 0;
-            const sent = outreach ? outreach.filter(o => o.status === 'sent').length : 0;
-            const replied = outreach ? outreach.filter(o => o.status === 'replied').length : 0;
-            const positive = outreach ? outreach.filter(o => o.reply_sentiment === 'positive').length : 0;
+            const totalP = isError(prospects) ? ERR : (prospects ? prospects.length : 0);
+            const totalE = isError(kpiLeads) ? ERR : (kpiLeads ? kpiLeads.length : 0);
+            const drafted = isError(outreach) ? ERR : (outreach ? outreach.filter(o => o.status === 'draft_created').length : 0);
+            const pending = isError(approvals) ? ERR : (approvals ? approvals.filter(a => a.status === 'pending').length : 0);
+            const sent = isError(outreach) ? ERR : (outreach ? outreach.filter(o => o.status === 'sent').length : 0);
+            const replied = isError(outreach) ? ERR : (outreach ? outreach.filter(o => o.status === 'replied').length : 0);
+            const positive = isError(outreach) ? ERR : (outreach ? outreach.filter(o => o.reply_sentiment === 'positive').length : 0);
 
             setText('funnelProspects', totalP);
             setText('funnelEnriched', totalE);
@@ -1382,10 +1399,14 @@
             setText('funnelPositive', positive);
 
             // Approval queue — safe DOM
-            approvalCache = approvals || [];
+            approvalCache = isError(approvals) ? [] : (approvals || []);
             const approvalTbody = document.getElementById('approvalTable');
             clearChildren(approvalTbody);
-            if (approvalCache.length === 0) {
+            if (isError(approvals)) {
+                const tr = createEl('tr');
+                tr.appendChild(createEl('td', { colspan: '6', style: 'text-align: center; color: var(--error); padding: 30px;' }, 'Could not load approval queue — API unavailable'));
+                approvalTbody.appendChild(tr);
+            } else if (approvalCache.length === 0) {
                 const tr = createEl('tr');
                 tr.appendChild(createEl('td', { colspan: '6', style: 'text-align: center; color: var(--text-secondary); padding: 30px;' }, 'No items in approval queue'));
                 approvalTbody.appendChild(tr);
@@ -1396,7 +1417,11 @@
             // Leads table — safe DOM
             const leadsTbody = document.getElementById('leadsTable');
             clearChildren(leadsTbody);
-            if (tableLeads && tableLeads.length > 0) {
+            if (isError(tableLeads)) {
+                const tr = createEl('tr');
+                tr.appendChild(createEl('td', { colspan: '4', style: 'text-align: center; color: var(--error);' }, 'Could not load leads — API unavailable'));
+                leadsTbody.appendChild(tr);
+            } else if (tableLeads && tableLeads.length > 0) {
                 tableLeads.forEach(lead => leadsTbody.appendChild(buildLeadRow(lead)));
             } else {
                 const tr = createEl('tr');
